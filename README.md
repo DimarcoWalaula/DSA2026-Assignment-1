@@ -5,7 +5,6 @@
 | | |
 |---|---|
 | Student | Student number | Role |
-|---|---:|---|
 | Nicodemus F.T. Markus | 214021254 | Team Leader (TL) |
 | Elikkan N. Rott | 223124192 |  |
 | Ngombe Ngarirokue | 222065435 |  |
