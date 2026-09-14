@@ -1,0 +1,460 @@
+<title>Library and Resource Management Console</title>
+<meta charset="utf-8">
+<style>
+  :root {
+    --bg: #0f1720; --panel: #16212c; --panel-2: #1c2a37; --border: #27394a;
+    --text: #e8eef4; --muted: #93a5b8; --accent: #4da3ff; --good: #35c48f;
+    --warn: #f5a623; --bad: #f0546a;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; font-family: -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+    background: var(--bg); color: var(--text);
+  }
+  header {
+    padding: 18px 24px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;
+  }
+  header h1 { font-size: 17px; margin: 0; }
+  header p { margin: 2px 0 0; color: var(--muted); font-size: 12px; }
+  nav { display: flex; gap: 6px; padding: 12px 24px 0; flex-wrap: wrap; }
+  nav button {
+    background: var(--panel); color: var(--muted); border: 1px solid var(--border);
+    padding: 8px 14px; border-radius: 8px 8px 0 0; cursor: pointer; font-size: 13px;
+  }
+  nav button.active { background: var(--panel-2); color: var(--text); border-bottom-color: var(--panel-2); }
+  main { padding: 20px 24px 60px; max-width: 1150px; margin: 0 auto; }
+  section.tab { display: none; }
+  section.tab.active { display: block; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+  @media (max-width: 820px) { .grid { grid-template-columns: 1fr; } }
+  .card {
+    background: var(--panel); border: 1px solid var(--border); border-radius: 10px;
+    padding: 16px; margin-bottom: 18px;
+  }
+  .card h2 { font-size: 14px; margin: 0 0 12px; color: var(--accent); }
+  label { display: block; font-size: 12px; color: var(--muted); margin: 8px 0 3px; }
+  input, select, textarea {
+    width: 100%; padding: 7px 9px; border-radius: 6px; border: 1px solid var(--border);
+    background: var(--bg); color: var(--text); font-size: 13px;
+  }
+  .row { display: flex; gap: 10px; }
+  .row > div { flex: 1; }
+  button.action {
+    margin-top: 12px; background: var(--accent); color: #05131f; border: none;
+    padding: 9px 16px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 13px;
+  }
+  button.action.secondary { background: var(--panel-2); color: var(--text); border: 1px solid var(--border); }
+  button.action.danger { background: var(--bad); color: #fff; }
+  table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  th, td { text-align: left; padding: 7px 8px; border-bottom: 1px solid var(--border); }
+  th { color: var(--muted); font-weight: 600; }
+  .badge { padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 600; }
+  .badge.AVAILABLE { background: rgba(53,196,143,.18); color: var(--good); }
+  .badge.LOANED_OUT, .badge.OCCUPIED { background: rgba(245,166,35,.18); color: var(--warn); }
+  .badge.UNDER_MAINTENANCE { background: rgba(240,84,106,.18); color: var(--bad); }
+  .badge.DISPOSED { background: rgba(147,165,184,.18); color: var(--muted); }
+  .msg { margin-top: 10px; font-size: 12.5px; }
+  .msg.ok { color: var(--good); }
+  .msg.err { color: var(--bad); }
+  .muted { color: var(--muted); }
+  .toolbar { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+  .toolbar input, .toolbar select { width: auto; min-width: 150px; }
+</style>
+
+<header>
+  <div>
+    <h1>Ministry of Higher Education, Training and Innovations</h1>
+    <p>Distributed Library and Resource Management System &middot; browser console</p>
+  </div>
+  <p id="health" class="muted">connecting&hellip;</p>
+</header>
+
+<nav id="tabs">
+  <button data-tab="catalogue" class="active">Catalogue</button>
+  <button data-tab="loans">Loans &amp; Bookings</button>
+  <button data-tab="maintenance">Maintenance</button>
+  <button data-tab="institutions">Institutions</button>
+</nav>
+
+<main>
+
+  <!-- ------------------------------ Catalogue ------------------------------ -->
+  <section class="tab active" id="tab-catalogue">
+    <div class="card">
+      <h2>Filter</h2>
+      <div class="toolbar">
+        <input id="f-institution" placeholder="Institution">
+        <input id="f-site" placeholder="Site / campus">
+        <select id="f-status">
+          <option value="">Any status</option>
+          <option>AVAILABLE</option>
+          <option>LOANED_OUT</option>
+          <option>OCCUPIED</option>
+          <option>UNDER_MAINTENANCE</option>
+          <option>DISPOSED</option>
+        </select>
+        <button class="action secondary" onclick="loadAssets()">Apply</button>
+        <button class="action secondary" onclick="clearFilters()">Clear</button>
+      </div>
+      <table>
+        <thead><tr><th>Tag</th><th>Name</th><th>Institution / site</th><th>Status</th><th>Acquired</th><th></th></tr></thead>
+        <tbody id="asset-rows"></tbody>
+      </table>
+      <p id="asset-msg" class="msg"></p>
+    </div>
+
+    <div class="grid">
+      <div class="card">
+        <h2>Register a new asset</h2>
+        <label>Asset tag</label><input id="na-tag">
+        <label>Name</label><input id="na-name">
+        <label>Description</label><input id="na-desc">
+        <div class="row">
+          <div><label>Institution</label><input id="na-inst" list="inst-list"></div>
+          <div><label>Site / campus</label><input id="na-site"></div>
+        </div>
+        <label>Date acquired (YYYY-MM-DD)</label><input id="na-date">
+        <button class="action" onclick="createAsset()">Register asset</button>
+        <p id="na-msg" class="msg"></p>
+      </div>
+
+      <div class="card">
+        <h2>Remove an asset</h2>
+        <label>Asset tag</label><input id="rm-tag">
+        <button class="action danger" onclick="removeAsset()">Remove</button>
+        <p id="rm-msg" class="msg"></p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ---------------------------- Loans & Bookings -------------------------- -->
+  <section class="tab" id="tab-loans">
+    <div class="grid">
+      <div class="card">
+        <h2>Loan an asset</h2>
+        <label>Asset tag</label><input id="ln-tag">
+        <label>Borrower</label><input id="ln-borrower">
+        <label>Due date (YYYY-MM-DD)</label><input id="ln-due">
+        <button class="action" onclick="loanAsset()">Loan out</button>
+        <p id="ln-msg" class="msg"></p>
+      </div>
+      <div class="card">
+        <h2>Return an asset</h2>
+        <label>Asset tag</label><input id="rt-tag">
+        <button class="action" onclick="returnAsset()">Return</button>
+        <p id="rt-msg" class="msg"></p>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Book a lab or meeting room</h2>
+      <div class="row">
+        <div><label>Asset tag</label><input id="bk-tag"></div>
+        <div><label>Booked by</label><input id="bk-by"></div>
+      </div>
+      <div class="row">
+        <div><label>Start date</label><input id="bk-start"></div>
+        <div><label>End date</label><input id="bk-end"></div>
+      </div>
+      <label>Purpose</label><input id="bk-desc">
+      <button class="action" onclick="bookAsset()">Book</button>
+      <p id="bk-msg" class="msg"></p>
+    </div>
+  </section>
+
+  <!-- ------------------------------ Maintenance ----------------------------- -->
+  <section class="tab" id="tab-maintenance">
+    <div class="card">
+      <h2>Overdue maintenance and servicing</h2>
+      <button class="action secondary" onclick="loadOverdue()">Refresh</button>
+      <table>
+        <thead><tr><th>Tag</th><th>Type</th><th>Due</th><th>Days late</th><th>Asset</th></tr></thead>
+        <tbody id="overdue-schedule-rows"></tbody>
+      </table>
+      <h2 style="margin-top:18px">Overdue loans</h2>
+      <table>
+        <thead><tr><th>Tag</th><th>Borrower</th><th>Due</th><th>Days late</th></tr></thead>
+        <tbody id="overdue-loan-rows"></tbody>
+      </table>
+    </div>
+
+    <div class="grid">
+      <div class="card">
+        <h2>Add a schedule</h2>
+        <label>Asset tag</label><input id="sc-tag">
+        <label>Schedule id</label><input id="sc-id">
+        <label>Type</label>
+        <select id="sc-type"><option>MAINTENANCE</option><option>SERVICING</option><option>INSPECTION</option></select>
+        <label>Due date</label><input id="sc-due">
+        <label>Description</label><input id="sc-desc">
+        <button class="action" onclick="addSchedule()">Add schedule</button>
+        <p id="sc-msg" class="msg"></p>
+      </div>
+      <div class="card">
+        <h2>Open a work order</h2>
+        <label>Asset tag</label><input id="wo-tag">
+        <label>Fault description</label><input id="wo-desc">
+        <button class="action" onclick="openWorkOrder()">Open work order</button>
+        <p id="wo-msg" class="msg"></p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ------------------------------ Institutions ---------------------------- -->
+  <section class="tab" id="tab-institutions">
+    <div class="card">
+      <h2>Registered institutions</h2>
+      <button class="action secondary" onclick="loadInstitutions()">Refresh</button>
+      <table>
+        <thead><tr><th>Id</th><th>Name</th><th>Sites</th><th></th></tr></thead>
+        <tbody id="institution-rows"></tbody>
+      </table>
+    </div>
+    <div class="card">
+      <h2>Register an institution</h2>
+      <div class="row">
+        <div><label>Id</label><input id="in-id"></div>
+        <div><label>Name</label><input id="in-name"></div>
+      </div>
+      <label>First site / campus</label><input id="in-site">
+      <button class="action" onclick="createInstitution()">Register</button>
+      <p id="in-msg" class="msg"></p>
+    </div>
+  </section>
+
+</main>
+
+<datalist id="inst-list"></datalist>
+
+<script>
+  const API = '/library';
+
+  async function call(path, options) {
+    const response = await fetch(API + path, options);
+    let body = null;
+    try { body = await response.json(); } catch (e) { /* no body */ }
+    if (!response.ok) {
+      const message = body && body.message ? body.message : ('HTTP ' + response.status);
+      throw new Error(message);
+    }
+    return body;
+  }
+
+  function badge(status) {
+    return '<span class="badge ' + status + '">' + status + '</span>';
+  }
+
+  function show(id, text, ok) {
+    const el = document.getElementById(id);
+    el.textContent = text;
+    el.className = 'msg ' + (ok ? 'ok' : 'err');
+  }
+
+  // ------------------------------- tabs -----------------------------------
+  document.getElementById('tabs').addEventListener('click', (e) => {
+    if (e.target.tagName !== 'BUTTON') return;
+    document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('section.tab').forEach(s => s.classList.remove('active'));
+    e.target.classList.add('active');
+    document.getElementById('tab-' + e.target.dataset.tab).classList.add('active');
+  });
+
+  // ----------------------------- catalogue ---------------------------------
+  function clearFilters() {
+    document.getElementById('f-institution').value = '';
+    document.getElementById('f-site').value = '';
+    document.getElementById('f-status').value = '';
+    loadAssets();
+  }
+
+  async function loadAssets() {
+    const institution = document.getElementById('f-institution').value.trim();
+    const site = document.getElementById('f-site').value.trim();
+    const status = document.getElementById('f-status').value;
+    const params = new URLSearchParams();
+    if (institution) params.set('institution', institution);
+    if (site) params.set('site', site);
+    if (status) params.set('status', status);
+    try {
+      const assets = await call('/assets' + (params.toString() ? '?' + params.toString() : ''));
+      const rows = assets.map(a => `<tr>
+          <td>${a.assetTag}</td><td>${a.name}</td>
+          <td>${a.institution}<br><span class="muted">${a.site}</span></td>
+          <td>${badge(a.status)}</td><td>${a.dateAcquired}</td>
+          <td><button class="action secondary" onclick="fillRemove('${a.assetTag}')">Select</button></td>
+        </tr>`).join('');
+      document.getElementById('asset-rows').innerHTML = rows || '<tr><td colspan="6" class="muted">No assets match.</td></tr>';
+      show('asset-msg', assets.length + ' asset(s)', true);
+    } catch (err) {
+      show('asset-msg', err.message, false);
+    }
+  }
+
+  function fillRemove(tag) {
+    document.getElementById('rm-tag').value = tag;
+  }
+
+  async function createAsset() {
+    const payload = {
+      assetTag: document.getElementById('na-tag').value.trim(),
+      name: document.getElementById('na-name').value.trim(),
+      description: document.getElementById('na-desc').value.trim(),
+      institution: document.getElementById('na-inst').value.trim(),
+      site: document.getElementById('na-site').value.trim(),
+      dateAcquired: document.getElementById('na-date').value.trim(),
+      status: 'AVAILABLE'
+    };
+    try {
+      const created = await call('/assets', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload)});
+      show('na-msg', 'Registered ' + created.assetTag + '.', true);
+      loadAssets();
+    } catch (err) {
+      show('na-msg', err.message, false);
+    }
+  }
+
+  async function removeAsset() {
+    const tag = document.getElementById('rm-tag').value.trim();
+    try {
+      const removed = await call('/assets/' + encodeURIComponent(tag), {method: 'DELETE'});
+      show('rm-msg', 'Removed ' + removed.assetTag + '.', true);
+      loadAssets();
+    } catch (err) {
+      show('rm-msg', err.message, false);
+    }
+  }
+
+  // -------------------------- loans & bookings -----------------------------
+  async function loanAsset() {
+    const tag = document.getElementById('ln-tag').value.trim();
+    const payload = {borrower: document.getElementById('ln-borrower').value.trim(), dueDate: document.getElementById('ln-due').value.trim()};
+    try {
+      const asset = await call('/assets/' + encodeURIComponent(tag) + '/loan', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload)});
+      show('ln-msg', asset.assetTag + ' is now ' + asset.status + '.', true);
+    } catch (err) {
+      show('ln-msg', err.message, false);
+    }
+  }
+
+  async function returnAsset() {
+    const tag = document.getElementById('rt-tag').value.trim();
+    try {
+      const asset = await call('/assets/' + encodeURIComponent(tag) + '/return', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: '{}'});
+      show('rt-msg', asset.assetTag + ' is now ' + asset.status + '.', true);
+    } catch (err) {
+      show('rt-msg', err.message, false);
+    }
+  }
+
+  async function bookAsset() {
+    const tag = document.getElementById('bk-tag').value.trim();
+    const payload = {
+      bookedBy: document.getElementById('bk-by').value.trim(),
+      startDate: document.getElementById('bk-start').value.trim(),
+      endDate: document.getElementById('bk-end').value.trim(),
+      description: document.getElementById('bk-desc').value.trim()
+    };
+    try {
+      const asset = await call('/assets/' + encodeURIComponent(tag) + '/bookings', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload)});
+      show('bk-msg', 'Booked. ' + asset.assetTag + ' is now ' + asset.status + '.', true);
+    } catch (err) {
+      show('bk-msg', err.message, false);
+    }
+  }
+
+  // ------------------------------ maintenance ------------------------------
+  async function loadOverdue() {
+    try {
+      const schedules = await call('/maintenance/overdue');
+      document.getElementById('overdue-schedule-rows').innerHTML = schedules.map(s =>
+        `<tr><td>${s.assetTag}</td><td>${s.scheduleType}</td><td>${s.dueDate}</td><td>${s.daysOverdue}d</td><td>${s.name}</td></tr>`
+      ).join('') || '<tr><td colspan="5" class="muted">Nothing is overdue.</td></tr>';
+
+      const loans = await call('/loans/overdue');
+      document.getElementById('overdue-loan-rows').innerHTML = loans.map(l =>
+        `<tr><td>${l.assetTag}</td><td>${l.borrower}</td><td>${l.dueDate}</td><td>${l.daysOverdue}d</td></tr>`
+      ).join('') || '<tr><td colspan="4" class="muted">No loans are overdue.</td></tr>';
+    } catch (err) {
+      document.getElementById('overdue-schedule-rows').innerHTML = '<tr><td colspan="5" class="msg err">' + err.message + '</td></tr>';
+    }
+  }
+
+  async function addSchedule() {
+    const tag = document.getElementById('sc-tag').value.trim();
+    const payload = {
+      scheduleId: document.getElementById('sc-id').value.trim(),
+      type: document.getElementById('sc-type').value,
+      dueDate: document.getElementById('sc-due').value.trim(),
+      description: document.getElementById('sc-desc').value.trim()
+    };
+    try {
+      await call('/assets/' + encodeURIComponent(tag) + '/schedules', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload)});
+      show('sc-msg', 'Schedule added.', true);
+      loadOverdue();
+    } catch (err) {
+      show('sc-msg', err.message, false);
+    }
+  }
+
+  async function openWorkOrder() {
+    const tag = document.getElementById('wo-tag').value.trim();
+    const payload = {orderId: '', status: 'OPEN', description: document.getElementById('wo-desc').value.trim()};
+    try {
+      const asset = await call('/assets/' + encodeURIComponent(tag) + '/workorders', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload)});
+      show('wo-msg', 'Work order opened. Asset is now ' + asset.status + '.', true);
+    } catch (err) {
+      show('wo-msg', err.message, false);
+    }
+  }
+
+  // ------------------------------ institutions ------------------------------
+  async function loadInstitutions() {
+    try {
+      const institutions = await call('/institutions');
+      document.getElementById('institution-rows').innerHTML = institutions.map(i =>
+        `<tr><td>${i.institutionId}</td><td>${i.name}</td><td>${i.sites.join(', ')}</td>
+          <td><button class="action danger" onclick="removeInstitution('${i.institutionId}')">Remove</button></td></tr>`
+      ).join('');
+      document.getElementById('inst-list').innerHTML = institutions.map(i => `<option value="${i.name}">`).join('');
+    } catch (err) {
+      document.getElementById('institution-rows').innerHTML = '<tr><td colspan="4" class="msg err">' + err.message + '</td></tr>';
+    }
+  }
+
+  async function createInstitution() {
+    const payload = {
+      institutionId: document.getElementById('in-id').value.trim(),
+      name: document.getElementById('in-name').value.trim(),
+      sites: [document.getElementById('in-site').value.trim()].filter(Boolean)
+    };
+    try {
+      await call('/institutions', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload)});
+      show('in-msg', 'Registered.', true);
+      loadInstitutions();
+    } catch (err) {
+      show('in-msg', err.message, false);
+    }
+  }
+
+  async function removeInstitution(id) {
+    try {
+      await call('/institutions/' + encodeURIComponent(id), {method: 'DELETE'});
+      loadInstitutions();
+    } catch (err) {
+      alert(err.message);
+    }
+  }
+
+  // --------------------------------- boot -----------------------------------
+  (async function boot() {
+    try {
+      const health = await call('/health');
+      document.getElementById('health').textContent = 'online • ' + health.assets + ' assets registered';
+    } catch (err) {
+      document.getElementById('health').textContent = 'offline';
+    }
+    loadAssets();
+    loadOverdue();
+    loadInstitutions();
+  })();
+</script>
