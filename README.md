@@ -6,6 +6,34 @@
 |---|---|
 | Student | *[Your Name]* |
 | Student number | *[Student Number]* |
+1. First Name: Nicodemus F.T.
+   Last Name: Markus
+   Student Number: 214021254
+   Role: Team Leader (TL)
+
+2. First Name: Elikkan N.
+   Last Name: Rott
+   Student Number: 223124192
+
+3. First Name: Ngombe
+   Last Name: Ngarirokue
+   Student Number: 222065435
+
+4. First Name: William D.
+   Last Name: Hasheela
+   Student Number: 223104418
+
+5. First Name: David M.
+   Last Name: Paulo
+   Student Number: 223029955
+
+6. First Name: Christoph Tjimbinaye
+   Last Name: Tuahuku
+   Student Number: 217045723
+
+7. First Name: Manuela K.
+   Last Name: Kambonge
+   Student Number: 217045723
 | Programme | Bachelor of Computer Science |
 | Lecturer | Mr H. Kandjimi |
 | Due | 14 September 2026, 23:59 |
